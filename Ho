@@ -1,0 +1,54 @@
+import numpy as np
+import matplotlib.pyplot as plt 
+
+import pandas as pd  
+import seaborn as sns 
+
+%matplotlib inline
+
+df=pd.read_csv('./BostonHousing.csv')
+df.shape
+df.describe()
+df.info()
+df.isnull().sum()
+for column in df.columns[:-1]:
+    plt.figure(figsize=(20, 5))
+    if df[column].dtype in [np.int64, np.float64]: # only plot numeric columns
+        plt.scatter(df[column],df['medv'])
+        plt.xlabel(column)
+        plt.ylabel("medv")
+        plt.show()
+from sklearn.model_selection import train_test_split
+
+X = df.loc[:, df.columns != 'medv']
+y = df.loc[:, df.columns == 'medv']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=123)
+
+from sklearn.preprocessing import StandardScaler
+sc = StandardScaler()
+X_train  = sc.fit_transform(X_train)
+X_test = sc.transform(X_test)
+
+from keras.models import Sequential
+from keras.layers import Dense
+
+model = Sequential()
+
+model.add(Dense(128, input_shape=(13, ), activation='relu', name='dense_1'))
+model.add(Dense(64, activation='relu', name='dense_2'))
+model.add(Dense(32, activation='relu', name='dense_3'))
+model.add(Dense(1, activation='linear', name='dense_output'))
+
+model.compile(optimizer='adam', loss='mse', metrics=['mae'])
+model.summary()
+
+history = model.fit(X_train, y_train, epochs=100, validation_split=0.05)
+
+mse_nn, mae_nn = model.evaluate(X_test, y_test)
+
+print('Mean squared error on test data: ', mse_nn)
+print('Mean absolute error on test data: ', mae_nn)
+
+model.predict(sc.transform([[0.33147,0,6.2,0,0.507,8.247,70.4,3.6519,8,307,17.4,378.95,3.95]]))
+
+model.predict(sc.transform([[0.7842,0,8.14,0,0.538,5.99,81.7,4.2579,4,307,21,386.75,14.67,]]))
