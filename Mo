@@ -1,0 +1,81 @@
+from tensorflow.keras.datasets import imdb
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense,Dropout
+from tensorflow.keras.layers import Flatten
+from tensorflow.keras.layers import Embedding
+from tensorflow.keras.preprocessing import sequence
+# load the dataset but only keep the top n words, zero the rest
+top_words = 5000
+(X_train, y_train), (X_test, y_test) = imdb.load_data(num_words=top_words)
+#
+print(X_train[0])
+word_index = imdb.get_word_index()
+
+# Reverse word index to obtain original words
+reverse_word_index = dict([(value, key) for (key, value) in word_index.items()])
+
+# Decode the first review
+decoded_review = ' '.join([reverse_word_index.get(i - 3, '?') for i in X_train[0]])
+
+# Print the first review
+print(decoded_review)
+
+max_words = 500
+X_train = sequence.pad_sequences(X_train, maxlen=max_words)
+X_test = sequence.pad_sequences(X_test, maxlen=max_words)
+# create the model
+model = Sequential()
+model.add(Embedding(top_words, 32, input_length=max_words))
+model.add(Flatten())
+model.add(Dense(units=256, activation='relu'))
+model.add(Dropout(rate=0.5))
+model.add(Dense(units=1, activation='sigmoid'))
+
+model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+model.summary()
+# Fit the model
+model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=4, batch_size=128, verbose=2)
+# Final evaluation of the model
+scores = model.evaluate(X_test, y_test, verbose=0)
+print("Accuracy: %.2f%%" % (scores[1]*100))
+from sklearn.metrics import confusion_matrix,classification_report
+y_pred = model.predict(X_test)
+y_pred_binary = [1 if p >= 0.5 else 0 for p in y_pred]
+
+# Create the confusion matrix
+cm = confusion_matrix(y_test, y_pred_binary)
+print(cm)
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+ax = sns.heatmap(cm, annot=True, cmap='Blues')
+
+ax.set_title('Seaborn Confusion Matrix with labels\n\n');
+ax.set_xlabel('\nPredicted Values')
+ax.set_ylabel('Actual Values ');
+
+## Ticket labels - List must be in alphabetical order
+ax.xaxis.set_ticklabels(['0','1'])
+ax.yaxis.set_ticklabels(['0','1'])
+
+## Display the visualization of the Confusion Matrix.
+plt.show()
+print(classification_report(y_test,y_pred_binary))
+def get_review(arg_review):
+    word_index = imdb.get_word_index()
+
+    # Reverse word index to obtain original words
+    reverse_word_index = dict([(value, key) for (key, value) in word_index.items()])
+
+    # Decode the first review
+    decoded_review = ' '.join([reverse_word_index.get(i - 3, '?') for i in arg_review])
+
+    # Print the first review
+    return decoded_review
+print(get_review(X_test[0]))def printREV(index):
+    print(get_review(X_test[index]))
+    
+    print()
+    print("actual : ",y_test[index])
+    print("predicted: ",y_pred_binary[index])
+printREV(314)
