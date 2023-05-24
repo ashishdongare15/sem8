@@ -1,0 +1,63 @@
+#include <stdio.h>
+
+// CUDA kernel for vector addition
+__global__ void vectorAddition(int* A, int* B, int* C, int numElements) {
+    int i = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if (i < numElements) {
+        C[i] = A[i] + B[i];
+    }
+}
+
+int main() {
+    int numElements = 100000; // Number of elements in the vectors
+    int size = numElements * sizeof(int);
+
+    // Allocate memory on the host (CPU)
+    int* h_A = (int*)malloc(size);
+    int* h_B = (int*)malloc(size);
+    int* h_C = (int*)malloc(size);
+
+    // Initialize input vectors on the host
+    for (int i = 0; i < numElements; ++i) {
+        h_A[i] = i;
+        h_B[i] = i * 2;
+    }
+
+    // Allocate memory on the device (GPU)
+    int* d_A;
+    int* d_B;
+    int* d_C;
+    cudaMalloc(&d_A, size);
+    cudaMalloc(&d_B, size);
+    cudaMalloc(&d_C, size);
+
+    // Copy input vectors from host to device
+    cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, h_B, size, cudaMemcpyHostToDevice);
+
+    // Launch the CUDA kernel with appropriate block and grid sizes
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (numElements + threadsPerBlock - 1) / threadsPerBlock;
+    vectorAddition<<<blocksPerGrid, threadsPerBlock>>>(d_A, d_B, d_C, numElements);
+
+    // Copy the result vector from device to host
+    cudaMemcpy(h_C, d_C, size, cudaMemcpyDeviceToHost);
+
+    // Print the result
+    for (int i = 0; i < numElements; ++i) {
+        printf("%d + %d = %d\n", h_A[i], h_B[i], h_C[i]);
+    }
+
+    // Free device memory
+    cudaFree(d_A);
+    cudaFree(d_B);
+    cudaFree(d_C);
+
+    // Free host memory
+    free(h_A);
+    free(h_B);
+    free(h_C);
+
+    return 0;
+}
