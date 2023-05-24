@@ -1,0 +1,74 @@
+#include <stdio.h>
+
+#define N 1024 // Matrix size (N x N)
+
+// CUDA kernel for matrix multiplication
+__global__ void matrixMultiplication(int* A, int* B, int* C) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (row < N && col < N) {
+        int sum = 0;
+        for (int k = 0; k < N; ++k) {
+            sum += A[row * N + k] * B[k * N + col];
+        }
+        C[row * N + col] = sum;
+    }
+}
+
+int main() {
+    int size = N * N * sizeof(int);
+
+    // Allocate memory on the host (CPU)
+    int* h_A = (int*)malloc(size);
+    int* h_B = (int*)malloc(size);
+    int* h_C = (int*)malloc(size);
+
+    // Initialize input matrices on the host
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            h_A[i * N + j] = i + j; // Example initialization
+            h_B[i * N + j] = i - j; // Example initialization
+        }
+    }
+
+    // Allocate memory on the device (GPU)
+    int* d_A;
+    int* d_B;
+    int* d_C;
+    cudaMalloc(&d_A, size);
+    cudaMalloc(&d_B, size);
+    cudaMalloc(&d_C, size);
+
+    // Copy input matrices from host to device
+    cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, h_B, size, cudaMemcpyHostToDevice);
+
+    // Launch the CUDA kernel with appropriate block and grid sizes
+    dim3 threadsPerBlock(16, 16);
+    dim3 blocksPerGrid((N + threadsPerBlock.x - 1) / threadsPerBlock.x, (N + threadsPerBlock.y - 1) / threadsPerBlock.y);
+    matrixMultiplication<<<blocksPerGrid, threadsPerBlock>>>(d_A, d_B, d_C);
+
+    // Copy the result matrix from device to host
+    cudaMemcpy(h_C, d_C, size, cudaMemcpyDeviceToHost);
+
+    // Print a portion of the result matrix
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            printf("%d\t", h_C[i * N + j]);
+        }
+        printf("\n");
+    }
+
+    // Free device memory
+    cudaFree(d_A);
+    cudaFree(d_B);
+    cudaFree(d_C);
+
+    // Free host memory
+    free(h_A);
+    free(h_B);
+    free(h_C);
+
+    return 0;
+}
